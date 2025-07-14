@@ -1,0 +1,14 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+
+# Quantum & ML
+tensorflow==2.15.0
+tensorflow-quantum==0.7.3
+cirq==1.3.0
+protobuf==4.25.3  # Pinned for compatibility
+ml-dtypes==0.2.0  # Pinned for compatibility
+
+# Scientific Computing & Data
+numpy==1.26.4
+scipy
