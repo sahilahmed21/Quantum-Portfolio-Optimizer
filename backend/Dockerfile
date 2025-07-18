@@ -1,24 +1,20 @@
-FROM python:3.11-slim
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
 
-# Set working directory
-WORKDIR /app
+# Set the working directory in the container
+WORKDIR /code
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Copy the dependencies file to the working directory
+COPY ./requirements.txt /code/requirements.txt
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Install any needed system dependencies
+RUN apt-get update && apt-get install -y build-essential
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install the dependencies
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Copy application code
-COPY . .
+# Copy the content of the local src directory to the working directory
+COPY ./app /code/app
 
-# Expose port
-EXPOSE 8000
-
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Specify the command to run on container startup
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
