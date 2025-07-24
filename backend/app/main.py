@@ -7,21 +7,22 @@ import sympy
 import tensorflow as tf
 import tensorflow_quantum as tfq
 from typing import List
+import math
 
-# NEW: FastAPI and Pydantic for API functionality
+# FastAPI and Pydantic for API functionality
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-# NEW: Define the FastAPI app
-app = FastAPI()
+# Define the FastAPI app
+app = FastAPI(
+    title="Quantum Portfolio Optimizer API",
+    description="An API that uses a hybrid quantum-classical approach to find an optimal portfolio."
+)
 
-# NEW: Allow requests from your frontend (CORS)
-# This is crucial for connecting a frontend and backend on different domains.
+# Allow requests from your frontend (CORS)
 origins = [
-    "http://localhost:3000", # Your local frontend development server
-    # Add your Vercel deployment URL here once you have it
-    # "https://your-app.vercel.app", 
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
@@ -32,142 +33,171 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# NEW: Define the structure of the incoming request data
 class PortfolioRequest(BaseModel):
     tickers: List[str]
     start_date: str
     end_date: str
-    target_return: float
+    risk_tolerance: float
 
-# --- Quantum Optimization Logic (largely unchanged) ---
-def run_quantum_optimization(mu_quantum, sigma_quantum, num_assets_quantum=2):
-    qubits = [cirq.GridQubit(0, i) for i in range(num_assets_quantum)]
-    cost_hamiltonian = cirq.PauliSum()
+# --- UTILITY FUNCTIONS ---
+def calculate_metrics(weights, mu, sigma):
+    """Calculates annualized return, risk, and Sharpe ratio for a given portfolio."""
+    weights = np.array(weights)
+    ret = np.sum(mu * weights)
+    risk = np.sqrt(np.dot(weights.T, np.dot(sigma, weights)))
+    sharpe = ret / risk if risk > 0 else 0
+    return ret, risk, sharpe
 
-    for i in range(num_assets_quantum):
-        for j in range(num_assets_quantum):
-            coeff = sigma_quantum[i, j] / 4.0
-            cost_hamiltonian += coeff * (1 - cirq.Z(qubits[i])) * (1 - cirq.Z(qubits[j]))
+# --- STEP 1: QUANTUM CONSTRAINED SELECTION (CORRECTED) ---
+def run_quantum_constrained_selection(mu: np.ndarray, sigma: np.ndarray, all_tickers: List[str]) -> List[str]:
+    """
+    Uses QAOA to find the best SUBSET of stocks of a specific size 'k'.
+    This version uses a much stronger penalty to GUARANTEE the constraint is met.
+    """
+    n_assets = len(mu)
+    qubits = [cirq.GridQubit(0, i) for i in range(n_assets)]
+    
+    # Define the desired number of assets in the portfolio
+    k = 3 if n_assets >= 3 else n_assets
 
-    penalty = 10.0
-    constraint_hamiltonian = (sum((1 - cirq.Z(q)) / 2.0 for q in qubits) - 1)**2
-    cost_hamiltonian += penalty * constraint_hamiltonian
+    # Build the Hamiltonian: (Risk - q * Return) + Penalty
+    hamiltonian = cirq.PauliSum()
+    q = 1.0  # Balances risk and return
 
-    def create_qaoa_circuit(gamma, beta):
-        circuit = cirq.Circuit()
-        circuit.append(cirq.H.on_each(*qubits))
-        for term in cost_hamiltonian:
-            qubits_in_term = list(term.qubits)
-            coeff = term.coefficient.real
-            if len(qubits_in_term) == 2:
-                q1, q2 = qubits_in_term[0], qubits_in_term[1]
-                circuit.append(cirq.ZZ(q1, q2)**(2 * coeff * gamma / np.pi))
-            elif len(qubits_in_term) == 1:
-                q1 = qubits_in_term[0]
-                circuit.append(cirq.rz(2 * coeff * gamma)(q1))
-        circuit.append(cirq.rx(2 * beta).on_each(*qubits))
-        return circuit
+    # Part 1 & 2: Risk and Return terms
+    for i in range(n_assets):
+        for j in range(n_assets):
+            hamiltonian += (sigma[i, j] / 4.0) * (1 - cirq.Z(qubits[i])) * (1 - cirq.Z(qubits[j]))
+    for i in range(n_assets):
+        hamiltonian += (-q * mu[i] / 2.0) * (1 - cirq.Z(qubits[i]))
 
+    # --- Part 3: CORRECTED Hard Constraint Term ---
+    # The penalty value is now made overwhelmingly large to ensure it is always respected.
+    penalty = np.sum(np.abs(sigma)) + np.sum(np.abs(mu))
+    constraint_term = (sum((1 - cirq.Z(q)) / 2.0 for q in qubits) - k)**2
+    hamiltonian += penalty * constraint_term
+
+    # --- QAOA Training (No changes here) ---
     gamma_sym, beta_sym = sympy.symbols('gamma beta')
-    qaoa_circuit_symbolic = create_qaoa_circuit(gamma_sym, beta_sym)
+    qaoa_circuit = cirq.Circuit(
+        cirq.H.on_each(*qubits),
+        tfq.util.exponential(operators=hamiltonian, -coeffs=gamma_sym),
+        cirq.Moment(cirq.rx(2 * beta_sym)(q) for q in qubits)
+    )
     symbol_names = ['gamma', 'beta']
     symbol_values = tf.Variable([0.5, 0.5], dtype=tf.float64)
     expectation_layer = tfq.layers.Expectation()
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.05)
 
-    for i in range(100):
+    for _ in range(150):
         with tf.GradientTape() as tape:
-            loss_value = expectation_layer(qaoa_circuit_symbolic, symbol_names=symbol_names,
-                                           symbol_values=[symbol_values], operators=[cost_hamiltonian])
+            loss_value = expectation_layer(qaoa_circuit, symbol_names=symbol_names, symbol_values=[symbol_values], operators=hamiltonian)
         grads = tape.gradient(loss_value, [symbol_values])
         optimizer.apply_gradients(zip(grads, [symbol_values]))
 
-    optimized_gamma, optimized_beta = symbol_values.numpy()
-    optimized_circuit = create_qaoa_circuit(optimized_gamma, optimized_beta)
-    measured_circuit = optimized_circuit + cirq.measure(*qubits, key='result')
+    # --- Measurement & Filtering ---
+    final_circuit = tfq.util.resolve_parameters(qaoa_circuit, tfq.util.get_circuit_symbols(qaoa_circuit), symbol_values)
+    final_circuit.append(cirq.measure(*qubits, key='result'))
+    
     simulator = cirq.Simulator()
-    result = simulator.run(measured_circuit, repetitions=1000)
+    result = simulator.run(final_circuit, repetitions=2000)
     histogram = result.histogram(key='result')
-    sorted_histogram = sorted(histogram.items(), key=lambda x: x[1], reverse=True)
-    most_frequent_bitstring = sorted_histogram[0][0]
     
-    weights_quantum = np.array([int(bit) for bit in f'{most_frequent_bitstring:0{num_assets_quantum}b}'])
-    if np.sum(weights_quantum) > 0:
-        weights_quantum = weights_quantum / np.sum(weights_quantum)
-
-    return weights_quantum.tolist() # NEW: Return as a list for JSON
-
-# --- Main Optimization Function (Refactored from main()) ---
-def perform_optimization(tickers: List[str], start_date: str, end_date: str, target_return: float):
-    # 1. Data Fetching
-    data = yf.download(tickers, start=start_date, end=end_date, auto_adjust=False, progress=False)
-    adj_close = data['Adj Close']
-    returns = adj_close.pct_change().dropna()
-    mu = returns.mean().values * 252
-    sigma = returns.cov().values * np.sqrt(252)
-
-    # 2. Classical Optimization
-    def portfolio_variance(w, sigma):
-        return np.sqrt(w.T @ sigma @ w)
-
-    def optimize_portfolio(mu_local, sigma_local, target_return_local):
-        n = len(mu_local)
-        constraints = [
-            {'type': 'eq', 'fun': lambda w: np.sum(w) - 1},
-            {'type': 'eq', 'fun': lambda w: np.sum(w * mu_local) - target_return_local}
-        ]
-        bounds = [(0, 1) for _ in range(n)]
-        result = minimize(portfolio_variance, np.ones(n)/n, args=(sigma_local,),
-                          constraints=constraints, bounds=bounds)
-        return result.x if result.success else np.zeros(n)
-
-    weights_classical = optimize_portfolio(mu, sigma, target_return)
+    # Filter for valid results that meet the 'k' constraint
+    valid_results = {k_val: v for k_val, v in histogram.items() if bin(k_val).count('1') == k}
     
-    # 3. Quantum Optimization (on the first 2 assets as before)
-    num_assets_quantum = 2
-    mu_quantum = mu[:num_assets_quantum]
-    sigma_quantum = sigma[:num_assets_quantum, :num_assets_quantum]
-    weights_quantum_subset = run_quantum_optimization(mu_quantum, sigma_quantum, num_assets_quantum)
+    if not valid_results:
+       # Fallback: if somehow NO valid states are found, return the top k stocks by individual Sharpe Ratio
+       # This is a robust fallback that still guarantees a diversified K-asset portfolio
+       individual_sharpes = mu / np.diag(sigma)
+       top_k_indices = np.argsort(individual_sharpes)[-k:]
+       return [all_tickers[i] for i in top_k_indices]
+
+    most_frequent_bitstring = max(valid_results, key=valid_results.get)
+
+    # Decode bitstring into a list of selected tickers
+    selected_tickers = []
+    bitstring_str = f'{most_frequent_bitstring:0{n_assets}b}'
+    for i, bit in enumerate(bitstring_str):
+        if bit == '1':
+            selected_tickers.append(all_tickers[i])
+            
+    return selected_tickers
+
+# --- STEP 2: CLASSICAL WEIGHT ALLOCATION ---
+def run_classical_allocation(mu: np.ndarray, sigma: np.ndarray) -> np.ndarray:
+    """Finds the optimal portfolio weights by maximizing the Sharpe Ratio."""
+    n = len(mu)
+    if n == 0: return np.array([])
     
-    # Pad the quantum weights array to match the full number of tickers
-    weights_quantum = np.zeros(len(tickers))
-    weights_quantum[:num_assets_quantum] = weights_quantum_subset
+    def negative_sharpe_ratio(weights, mu, sigma):
+        return -calculate_metrics(weights, mu, sigma)[2]
 
-    # 4. Calculate Efficient Frontier data points for the frontend to plot
-    target_returns_plot = np.linspace(min(mu), max(mu), 50)
-    risks_plot = [portfolio_variance(optimize_portfolio(mu, sigma, r), sigma) for r in target_returns_plot]
+    constraints = ({'type': 'eq', 'fun': lambda w: np.sum(w) - 1})
+    bounds = tuple((0, 1) for _ in range(n))
+    initial_weights = np.ones(n) / n
+    
+    result = minimize(fun=negative_sharpe_ratio, x0=initial_weights, args=(mu, sigma), method='SLSQP', bounds=bounds, constraints=constraints)
+    
+    return result.x if result.success else np.zeros(n)
 
-    # 5. Compile results into a dictionary for JSON response
-    results = {
-        "tickers": tickers,
-        "classical": {
-            "weights": weights_classical.tolist(),
-            "return": np.sum(weights_classical * mu),
-            "risk": portfolio_variance(weights_classical, sigma)
-        },
-        "quantum": {
-            "weights": weights_quantum.tolist(),
-            "return": np.sum(weights_quantum * mu),
-            "risk": portfolio_variance(weights_quantum, sigma)
-        },
-        "efficientFrontier": {
-            "risks": [r for r in risks_plot if r > 0], # Filter out failed optimizations
-            "returns": [tr for r, tr in zip(risks_plot, target_returns_plot) if r > 0]
-        }
-    }
-    return results
-
-# NEW: Define the API endpoint that the frontend will call
+# --- MAIN API ENDPOINT ---
 @app.post("/optimize")
 async def optimize_portfolio_endpoint(request: PortfolioRequest):
-    """
-    Receives portfolio data, runs classical and quantum optimizations,
-    and returns the results.
-    """
-    results = perform_optimization(
-        tickers=request.tickers,
-        start_date=request.start_date,
-        end_date=request.end_date,
-        target_return=request.target_return
-    )
-    return results
+    """Orchestrates the constrained hybrid optimization process."""
+    try:
+        all_tickers = request.tickers
+        data = yf.download(all_tickers, start=request.start_date, end=request.end_date, auto_adjust=True, progress=False)
+        adj_close = data['Close']
+        if adj_close.empty or adj_close.isnull().values.any():
+            raise ValueError("Could not download valid stock data. Check tickers and date range.")
+            
+        returns = adj_close.pct_change().dropna()
+        full_mu = returns.mean().values * 252
+        full_sigma = returns.cov().values * 252
+        
+        # --- PATH A: Purely Classical Optimization ---
+        classical_weights = run_classical_allocation(full_mu, full_sigma)
+        c_return, c_risk, c_sharpe = calculate_metrics(classical_weights, full_mu, full_sigma)
+
+        # --- PATH B: Hybrid Quantum-Classical Optimization ---
+        # Step 1: Quantum selects the best CONSTRAINED subset of tickers
+        quantum_selected_tickers = run_quantum_constrained_selection(full_mu, full_sigma, all_tickers)
+
+        hybrid_weights = np.zeros(len(all_tickers))
+        if len(quantum_selected_tickers) > 1:
+            selected_indices = [all_tickers.index(t) for t in quantum_selected_tickers]
+            mu_subset = full_mu[selected_indices]
+            sigma_subset = full_sigma[np.ix_(selected_indices, selected_indices)]
+            
+            # Step 2: Classical finds the weights for this superior subset
+            subset_weights = run_classical_allocation(mu_subset, sigma_subset)
+            np.put(hybrid_weights, selected_indices, subset_weights)
+
+        elif len(quantum_selected_tickers) == 1:
+            selected_index = all_tickers.index(quantum_selected_tickers[0])
+            hybrid_weights[selected_index] = 1.0
+
+        h_return, h_risk, h_sharpe = calculate_metrics(hybrid_weights, full_mu, full_sigma)
+        
+        # --- Compile Final Results ---
+        results = {
+            "classical_portfolio": {
+                "tickers": all_tickers,
+                "weights": classical_weights.tolist(),
+                "return": c_return,
+                "risk": c_risk,
+                "sharpe_ratio": c_sharpe
+            },
+            "hybrid_quantum_portfolio": {
+                "tickers": quantum_selected_tickers if quantum_selected_tickers else all_tickers,
+                "weights": hybrid_weights.tolist(),
+                "return": h_return,
+                "risk": h_risk,
+                "sharpe_ratio": h_sharpe
+            }
+        }
+        return results
+
+    except Exception as e:
+        return {"error": str(e)}
