@@ -1,0 +1,16 @@
+# Ignore dependencies, as they are installed inside the container
+node_modules
+
+# Ignore the production build folder, as it's created inside the container
+build
+
+# Ignore Docker files
+Dockerfile
+.dockerignore
+
+# Ignore source control files
+.git
+.gitignore
+
+# Ignore environment files (if you decide to use them later)
+.env*
