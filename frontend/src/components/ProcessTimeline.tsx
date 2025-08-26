@@ -137,7 +137,7 @@ export const OPTIMIZATION_STEPS: Step[] = [
         icon: FileClock,
         renderDetails: () => (
             <div className="text-sm space-y-2 text-muted-foreground">
-                <p><strong>What's happening:</strong> We are downloading daily historical stock prices for each selected ticker from the Yahoo Finance API.</p>
+                <p><strong>What&apos;s happening:</strong> We are downloading daily historical stock prices for each selected ticker from the Yahoo Finance API.</p>
                 <p><strong>Why:</strong> This historical data is the foundation for all subsequent calculations. It allows us to understand how each asset has performed and behaved in the past.</p>
             </div>
         ),
@@ -149,7 +149,7 @@ export const OPTIMIZATION_STEPS: Step[] = [
         icon: TestTube2,
         renderDetails: (details) => (
             <div className="text-sm space-y-2 text-muted-foreground">
-                <p><strong>What's happening:</strong> We are computing two critical inputs from the historical data: the expected returns for each asset and their covariance matrix.</p>
+                <p><strong>What&apos;s happening:</strong> We are computing two critical inputs from the historical data: the expected returns for each asset and their covariance matrix.</p>
                 <p><strong>Why:</strong> Expected returns (μ) estimate future performance, while the covariance matrix (Σ) measures how assets move in relation to each other. A positive covariance means they tend to move together; negative means they move opposite. This is crucial for diversification.</p>
                 {details && (
                     <>
@@ -167,7 +167,7 @@ export const OPTIMIZATION_STEPS: Step[] = [
         icon: Target,
         renderDetails: () => (
             <div className="text-sm space-y-2 text-muted-foreground">
-                <p><strong>What's happening:</strong> A classical solver (SciPy's SLSQP) is running to find the Global Minimum Variance (GMV) portfolio.</p>
+                <p><strong>What&apos;s happening:</strong> A classical solver (SciPy&apos;s SLSQP) is running to find the Global Minimum Variance (GMV) portfolio.</p>
                 <p><strong>Why:</strong> The GMV portfolio is the combination of assets that has the lowest possible risk (volatility). It serves as a robust, conservative benchmark against which we can compare our quantum-inspired solution.</p>
             </div>
         ),
@@ -179,8 +179,8 @@ export const OPTIMIZATION_STEPS: Step[] = [
         icon: BrainCircuit,
         renderDetails: () => (
             <div className="text-sm space-y-2 text-muted-foreground">
-                <p><strong>What's happening:</strong> We are simulating a Quantum Approximate Optimization Algorithm (QAOA) inspired heuristic. It rapidly evaluates thousands of potential portfolio combinations.</p>
-                <p><strong>Why:</strong> Unlike the classical method that just minimizes risk, this algorithm seeks the best possible portfolio that balances risk and return according to your specific risk tolerance. It's designed to navigate complex relationships between assets that classical methods might miss.</p>
+                <p><strong>What&apos;s happening:</strong> We are simulating a Quantum Approximate Optimization Algorithm (QAOA) inspired heuristic. It rapidly evaluates thousands of potential portfolio combinations.</p>
+                <p><strong>Why:</strong> Unlike the classical method that just minimizes risk, this algorithm seeks the best possible portfolio that balances risk and return according to your specific risk tolerance. It&apos;s designed to navigate complex relationships between assets that classical methods might miss.</p>
             </div>
         ),
     },
@@ -191,7 +191,7 @@ export const OPTIMIZATION_STEPS: Step[] = [
         icon: CheckCircle2,
         renderDetails: () => (
             <div className="text-sm space-y-2 text-muted-foreground">
-                <p><strong>What's happening:</strong> Both optimization processes are complete. We are now compiling the results, calculating performance metrics, and generating the data for the charts and tables.</p>
+                <p><strong>What&apos;s happening:</strong> Both optimization processes are complete. We are now compiling the results, calculating performance metrics, and generating the data for the charts and tables.</p>
                 <p><strong>Why:</strong> This final step packages the complex output into a clear, human-readable format, allowing you to easily compare the classical and quantum-inspired strategies.</p>
             </div>
         ),

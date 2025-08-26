@@ -1,7 +1,7 @@
 // src/components/PortfolioChart.tsx
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import {
     Chart as ChartJS,
     ArcElement,
@@ -13,6 +13,7 @@ import {
     LineElement,
     BarElement,
     Title,
+    TooltipItem,
 } from 'chart.js'
 import { Pie, Scatter, Bar } from 'react-chartjs-2'
 
@@ -46,8 +47,10 @@ interface PortfolioChartProps {
     type: 'allocation' | 'performance'
 }
 
+// Chart.js context types
+type ChartContext = TooltipItem<'pie' | 'scatter' | 'bar'>;
+
 export function PortfolioChart({ data, type }: PortfolioChartProps) {
-    const chartRef = useRef<any>(null)
 
     // Define consistent colors for assets
     const getColors = (count: number) => {
@@ -88,8 +91,8 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function (context: any) {
-                            return `${context.label}: ${context.parsed.toFixed(1)}%`
+                        label: function (this: any, tooltipItem: ChartContext) {
+                            return `${tooltipItem.label}: ${tooltipItem.parsed.toFixed(1)}%`
                         }
                     }
                 }
@@ -98,7 +101,7 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
 
         return (
             <div className="h-64">
-                <Pie ref={chartRef} data={quantumData} options={options} />
+                <Pie data={quantumData} options={options} />
             </div>
         )
     }
@@ -145,8 +148,8 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function (context: any) {
-                            return `${context.dataset.label}: Risk ${context.parsed.x.toFixed(2)}%, Return ${context.parsed.y.toFixed(2)}%`
+                        label: function (this: any, tooltipItem: ChartContext) {
+                            return `${tooltipItem.dataset.label || 'Dataset'}: Risk ${tooltipItem.parsed.x?.toFixed(2) || '0'}%, Return ${tooltipItem.parsed.y?.toFixed(2) || '0'}%`
                         }
                     }
                 }
@@ -171,7 +174,7 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
 
         return (
             <div className="h-64">
-                <Scatter ref={chartRef} data={scatterData} options={scatterOptions} />
+                <Scatter data={scatterData} options={scatterOptions} />
             </div>
         )
     }
@@ -212,8 +215,8 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
             },
             tooltip: {
                 callbacks: {
-                    label: function (context: any) {
-                        return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`
+                    label: function (this: any, tooltipItem: ChartContext) {
+                        return `${tooltipItem.dataset.label || 'Dataset'}: ${tooltipItem.parsed.y?.toFixed(1) || '0'}%`
                     }
                 }
             }
@@ -237,7 +240,7 @@ export function PortfolioChart({ data, type }: PortfolioChartProps) {
 
     return (
         <div className="h-64">
-            <Bar ref={chartRef} data={barData} options={barOptions} />
+            <Bar data={barData} options={barOptions} />
         </div>
     )
 }

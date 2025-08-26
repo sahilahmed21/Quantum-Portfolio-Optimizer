@@ -7,7 +7,7 @@ import axios from 'axios'
 import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ArrowLeft, Bot, Target, Repeat, AlertTriangle } from 'lucide-react'
+import { Loader2, ArrowLeft, Bot, Repeat, AlertTriangle } from 'lucide-react'
 
 // Import all required components, including the new timeline
 import { ProcessTimeline, OPTIMIZATION_STEPS, CalculationDetails } from '@/components/ProcessTimeline'
@@ -23,6 +23,24 @@ interface PortfolioData {
     end_date: string;
     risk_tolerance: number;
 }
+
+// Error handling types
+interface ApiError {
+    response?: {
+        data?: {
+            error?: string;
+        };
+    };
+}
+
+// Helper function to extract error message
+const extractErrorMessage = (err: unknown): string => {
+    if (err && typeof err === 'object' && 'response' in err) {
+        const apiErr = err as ApiError;
+        return apiErr.response?.data?.error || 'An unexpected error occurred.';
+    }
+    return 'An unexpected error occurred.';
+};
 
 // This now includes the detailed calculation data
 interface NewPortfolioResult {
@@ -119,8 +137,8 @@ export default function ResultsPage() {
                     setResults(response.data as ExistingPortfolioResult);
                 }
                 toast.success('Optimization Complete!')
-            } catch (err: any) {
-                const errorMessage = err.response?.data?.error || 'An unexpected error occurred.'
+            } catch (err: unknown) {
+                const errorMessage = extractErrorMessage(err);
                 setError(errorMessage)
                 setErrorStepId(step); // Mark the current step as the one that failed
                 toast.error(errorMessage)
@@ -197,13 +215,11 @@ export default function ResultsPage() {
                         optimizationType === 'new' ? (
                             <NewPortfolioView
                                 results={results as NewPortfolioResult}
-                                portfolioData={portfolioData}
                                 onNewOptimization={() => router.push('/portfolio')}
                             />
                         ) : (
                             <ExistingPortfolioView
                                 results={results as ExistingPortfolioResult}
-                                portfolioData={portfolioData}
                                 onNewOptimization={() => router.push('/portfolio')}
                             />
                         )
@@ -217,7 +233,7 @@ export default function ResultsPage() {
 
 
 // --- Sub-components for Results Display (No changes needed) ---
-const NewPortfolioView = ({ results, portfolioData, onNewOptimization }: { results: NewPortfolioResult, portfolioData: PortfolioData, onNewOptimization: () => void }) => (
+const NewPortfolioView = ({ results, onNewOptimization }: { results: NewPortfolioResult, onNewOptimization: () => void }) => (
     <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -238,7 +254,7 @@ const NewPortfolioView = ({ results, portfolioData, onNewOptimization }: { resul
         <Card><CardHeader><CardTitle>Detailed Comparison</CardTitle><CardDescription>Complete breakdown of quantum vs. classical optimization results.</CardDescription></CardHeader><CardContent><ResultsTable results={results} /></CardContent></Card>
     </div>
 );
-const ExistingPortfolioView = ({ results, portfolioData, onNewOptimization }: { results: ExistingPortfolioResult, portfolioData: PortfolioData, onNewOptimization: () => void }) => {
+const ExistingPortfolioView = ({ results, onNewOptimization }: { results: ExistingPortfolioResult, onNewOptimization: () => void }) => {
 
     const performanceChartData: NewPortfolioResult = {
         tickers: ["Current Portfolio", "Quantum Optimized"],
