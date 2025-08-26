@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-// import { toast } from 'sonner';
+import { toast } from 'sonner';
 import { Loader2, ArrowLeft, Bot, Repeat, AlertTriangle } from 'lucide-react';
 
 import { optimizePortfolio } from '../api/optimize';

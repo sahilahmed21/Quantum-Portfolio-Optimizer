@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BACKEND_URL = 'http://f1quantumpfopt.dev.ryzeai.ai' || 'http://localhost:8000';
+const BACKEND_URL = 'http://localhost:8000' || 'http://f1quantumpfopt.dev.ryzeai.ai';
 
 export const optimizePortfolio = async (portfolioRequest) => {
     try {
