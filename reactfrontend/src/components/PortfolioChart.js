@@ -39,14 +39,14 @@ export function PortfolioChart({ data, type }) {
         const chartData = {
             datasets: [
                 {
-                    label: data.tickers[0] || 'Classical/Current', // Handle different labels
+                    label: 'Classical', // Handle different labels
                     data: [{ x: data.classical_risk * 100, y: data.classical_return * 100 }],
                     backgroundColor: CLASSICAL_COLOR,
                     pointRadius: 8,
                     pointHoverRadius: 10
                 },
                 {
-                    label: data.tickers[1] || 'Quantum',
+                    label: 'Quantum',
                     data: [{ x: data.quantum_risk * 100, y: data.quantum_return * 100 }],
                     backgroundColor: QUANTUM_COLOR,
                     pointRadius: 8,
