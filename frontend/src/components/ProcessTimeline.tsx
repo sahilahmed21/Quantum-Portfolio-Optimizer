@@ -21,7 +21,7 @@ interface Step {
     title: string;
     description: string;
     renderDetails: (details: CalculationDetails | null) => React.ReactNode;
-    icon: React.ElementType;
+    icon: React.ComponentType<{ className?: string }>;
 }
 
 interface ProcessTimelineProps {
