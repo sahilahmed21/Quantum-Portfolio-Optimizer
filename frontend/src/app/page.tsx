@@ -8,6 +8,7 @@ import { BackgroundBeams } from "@/components/ui/background-beams";
 import { HoverEffect } from "@/components/ui/card-hover-effect";
 import { AnimatePresence, motion } from "motion/react";
 import { CanvasRevealEffect } from "@/components/ui/canvas-reveal-effect";
+import { quantumFeatures } from "@/components/quantumfeatures";
 
 export default function Home() {
   return (
@@ -144,39 +145,39 @@ export default function Home() {
   )
 }
 
-// Feature data for hover cards
-export const quantumFeatures = [
-  {
-    title: "QAOA-Based Optimization",
-    description: "Implement quantum approximate optimization algorithms to explore portfolio weight combinations more efficiently than traditional methods.",
-    link: "#"
-  },
-  {
-    title: "Risk Analysis",
-    description: "Analyze portfolio risk through correlation matrices and volatility calculations to help with diversification decisions.",
-    link: "#"
-  },
-  {
-    title: "Market Data Integration",
-    description: "Connect to financial data sources to use current market information in the optimization process.",
-    link: "#"
-  },
-  {
-    title: "Modern Algorithms",
-    description: "Combine mathematical optimization techniques with contemporary approaches to portfolio balancing.",
-    link: "#"
-  },
-  {
-    title: "Secure Processing",
-    description: "Process your portfolio data securely without storing sensitive financial information permanently.",
-    link: "#"
-  },
-  {
-    title: "Multi-Asset Classes",
-    description: "Work with different types of investments including stocks, ETFs, and other financial instruments.",
-    link: "#"
-  }
-];
+// // Feature data for hover cards
+// export const quantumFeatures = [
+//   {
+//     title: "QAOA-Based Optimization",
+//     description: "Implement quantum approximate optimization algorithms to explore portfolio weight combinations more efficiently than traditional methods.",
+//     link: "#"
+//   },
+//   {
+//     title: "Risk Analysis",
+//     description: "Analyze portfolio risk through correlation matrices and volatility calculations to help with diversification decisions.",
+//     link: "#"
+//   },
+//   {
+//     title: "Market Data Integration",
+//     description: "Connect to financial data sources to use current market information in the optimization process.",
+//     link: "#"
+//   },
+//   {
+//     title: "Modern Algorithms",
+//     description: "Combine mathematical optimization techniques with contemporary approaches to portfolio balancing.",
+//     link: "#"
+//   },
+//   {
+//     title: "Secure Processing",
+//     description: "Process your portfolio data securely without storing sensitive financial information permanently.",
+//     link: "#"
+//   },
+//   {
+//     title: "Multi-Asset Classes",
+//     description: "Work with different types of investments including stocks, ETFs, and other financial instruments.",
+//     link: "#"
+//   }
+// ];
 
 // Card component for How It Works section
 const Card = ({
