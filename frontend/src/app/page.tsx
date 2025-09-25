@@ -85,7 +85,12 @@ export default function Home() {
             Why Choose Quantum Optimization?
           </h2>
           <div className="max-w-5xl mx-auto px-8 relative z-20">
-            <HoverEffect items={features} />
+            <HoverEffect
+              items={features.map((feature) => ({
+                ...feature,
+                link: "#",
+              }))}
+            />
           </div>
         </section>
 
