@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 app = FastAPI(title="Quantum Portfolio Optimizer Engine")
 
 # Ensure your frontend URL is in this list for production
-origins = ["http://localhost:3002", "https://your-production-frontend-url.com"]
+origins = ["http://localhost:3002", "https://your-production-frontend-url.com","https://quantum-portfolio-optimizer-wine.vercel.app"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # --- DATA MODELS ---
