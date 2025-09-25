@@ -34,11 +34,17 @@ interface ProcessTimelineProps {
 
 // --- HELPER COMPONENTS ---
 
-const StatusIcon = ({ status, IconComponent }: { status: Status; IconComponent: React.ElementType }) => {
+const StatusIcon = ({
+    status,
+    IconComponent,
+}: {
+    status: Status;
+    IconComponent: React.ElementType<any>;
+}) => {
     if (status === 'in-progress') return <Loader2 className="h-6 w-6 animate-spin text-blue-500" />;
     if (status === 'completed') return <CheckCircle2 className="h-6 w-6 text-green-500" />;
     if (status === 'error') return <XCircle className="h-6 w-6 text-red-500" />;
-    return <IconComponent className="h-6 w-6 text-muted-foreground" />;
+    return <IconComponent className="h-6 w-6 text-muted-foreground" />; // ✅ now works
 };
 
 // --- MAIN COMPONENT ---
